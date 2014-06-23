@@ -1,0 +1,4 @@
+.vim.custom
+*.o
+tester_serial
+tester_parallel

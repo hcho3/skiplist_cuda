@@ -27,12 +27,16 @@ __global__ static void skiplist_destroy_free(Node **to_free, int size);
 __device__ static int rand(unsigned int random);
 __global__ static void skiplist_gather_internal(E *dest, Skiplist *sl);
 
+/* Initializes the skiplist to contain nothing but an empty head node */
 __global__ static void create_head(Skiplist *sl)
 {
   sl->head = node_create(MIN_VAL, MAX_LEVEL);
   memset(sl->head->next, 0, MAX_LEVEL * sizeof(Node *));
 }
 
+/* Performs a traversal of the list and completes preliminary legwork so that
+ * memory can be freed after it is used in the list.
+ */
 __global__ static void skiplist_destroy_traverse(Skiplist *sl, Node **to_free)
 {
   Node *cur;
@@ -50,10 +54,13 @@ __global__ static void skiplist_destroy_traverse(Skiplist *sl, Node **to_free)
   }
 }
 
+/* Uses the array of elements created above to actually free up Node memory. */
 __global__ static void skiplist_destroy_free(Node **to_free, int size)
 {
+	// Parallelizing the process of freeing Nodes from memory.
   int i = threadIdx.x + blockIdx.x * blockDim.x;
 
+	// Frees Nodes like in skip_serial but uses threads to do this concurrently
   while (i < size) {
     free(to_free[i]->next);
     free(to_free[i]);
@@ -62,6 +69,7 @@ __global__ static void skiplist_destroy_free(Node **to_free, int size)
   }
 }
 
+/* Launches a kernel to create a header for the new skiplist. */
 Skiplist *skiplist_create(void)
 {
   Skiplist *sl;
@@ -73,6 +81,9 @@ Skiplist *skiplist_create(void)
   return sl;
 }
 
+/* Combines destory_traverse and destroy_free functions to actually free
+ * memory once the skiplist need not be used again.
+ */
 void skiplist_destroy(Skiplist *sl)
 {
   Node **to_free;
@@ -87,6 +98,7 @@ void skiplist_destroy(Skiplist *sl)
   CHECK(cudaFree(to_free));
 }
 
+/* Inserts a new node into the list in parallel. */
 __device__ void skiplist_insert(Skiplist *sl, E elem)
 {
   Node *new_node;
@@ -107,67 +119,31 @@ __device__ void skiplist_insert(Skiplist *sl, E elem)
   // insert the new node into the skiplist
   //int tries;
   for (i = 0; i < level; i++) {
-    //tries = 1;
     do {
-      dest = node_search(sl, elem, i);// want to insert right after this node
-      /*
-      if (dest->val < 0)
-        printf("%7u thread %2d: elem = %2d, dest = -INF, level = %d, "
-          "# tries = %2d\n",
-          clock(), threadIdx.x, elem, i, tries);
-      else
-        printf("%7u thread %2d: elem = %2d, dest = %4d, level = %d, "
-          "# tries = %2d\n",
-          clock(), threadIdx.x, elem, dest->val, i, tries);
-      */
+			// We keep track of the original form of the list for checking purposes
+      dest = node_search(sl, elem, i); // want to insert right after this node
       link_first_read = dest->next[i];
 
+			// Checks for obvious errors before inserting
       if (link_first_read != NULL && link_first_read->val < elem) {
-        //tries++;
         continue;
       }
 
+			// Allow each node/thread to set the forward facing pointer.
       new_node->next[i] = link_first_read;
       // check if dest->next[i] contains the same value as a while ago
       // if so, make it point to the new node. 
       // otherwise, declare failure and try again.
+			// this would mean that someone else has already inserted.
       link_second_read
       = (Node *)atomicCAS((unsigned long long int *)&(dest->next[i]),
         *(unsigned long long int *)&link_first_read,
         *(unsigned long long int *)&new_node);
-      /*
-      printf("%7u thread %2d: elem %2d, link_first_read = %3d, "
-        "link_second_read = %3d, # tries = %2d\n",
-        clock(), threadIdx.x, elem,
-        (link_first_read != NULL) ? link_first_read->val : -10,
-        (link_second_read != NULL) ? link_second_read->val : -10,
-        tries); */
-
-      //tries++;
     } while (link_first_read != link_second_read);
-    /*printf("%7u SUCCESS: thread %2d, elem = %2d, level = %d, "
-      "# tries = %2d\n", clock(), threadIdx.x, elem, i, tries - 1);*/
   }
 }
-
-__device__ void skiplist_remove(Skiplist *sl, E elem)
-{
-  Node *prev_node = node_search(sl, elem, 0);
-  Node *target_node = prev_node->next[0];
-  int i;
-
-  if (target_node->val != elem)
-    return; // elem not found
-
-  // remove top level first
-  for (i = target_node->level - 1; i >= 0; i--) {
-    prev_node = node_search(sl, elem, i);
-    prev_node->next[i] = target_node->next[i]; // need atomics here
-  }
-
-  node_destroy(target_node);
-}
-
+ 
+/* Simply traverses the bottom level of the skiplist and returns size */
 int skiplist_size(Skiplist *sl)
 {
   int *size, *size_dev;
@@ -183,7 +159,7 @@ int skiplist_size(Skiplist *sl)
 
   return size_result;
 }
-
+/* Retrieves the size on the device and writes back to the kernel above. */
 __global__ static void skiplist_size_internal(Skiplist *sl, int *size_out)
 {
   Node *cur = skiplist_head(sl);
@@ -204,6 +180,7 @@ __global__ static void skiplist_size_internal(Skiplist *sl, int *size_out)
   *size_out = size; // write across PCI channel
 }
 
+/* Returns an array of type E containing only sorted values from the list */
 E *skiplist_gather(Skiplist *sl, int *dim)
 {
   int size = skiplist_size(sl);
@@ -221,6 +198,7 @@ E *skiplist_gather(Skiplist *sl, int *dim)
   return dest;
 }
 
+/* Retrieves the elements of the list on the device much like size_internal. */
 __global__ static void skiplist_gather_internal(E *dest, Skiplist *sl)
 {
   Node *cur = skiplist_head(sl);
@@ -239,11 +217,13 @@ __global__ static void skiplist_gather_internal(E *dest, Skiplist *sl)
   }
 }
 
+/* Returns the pointer to the head of the skip list. */
 __device__ Node *skiplist_head(Skiplist *sl)
 {
   return sl->head;
 }
 
+/* Fetches the reference to the next Node in the skiplist. */
 __device__ Node *node_next(Node *node)
 {
   if (node == NULL)
@@ -252,13 +232,10 @@ __device__ Node *node_next(Node *node)
     return node->next[0];
 }
 
+/* Constructor function for a single node belonging to the skiplist. */
 __device__ static Node *node_create(E val, int level)
 {
   Node *node = (Node *)malloc(sizeof(Node));
-
-  /*
-  if (node == NULL)
-    printf("ouch\n");*/
 
   node->val = val;
   node->level = level;
@@ -267,12 +244,14 @@ __device__ static Node *node_create(E val, int level)
   return node;
 }
 
+/* Simplifies the process of freeing node data. */
 __device__ static void node_destroy(Node *node)
 {
   free(node->next);
   free(node);
 }
 
+/* Traverses the skiplist and searches for a particular element. */
 __device__ static Node *node_search(Skiplist *sl, E elem, int desired_level)
 {
   Node *cur = skiplist_head(sl);
@@ -289,7 +268,9 @@ __device__ static Node *node_search(Skiplist *sl, E elem, int desired_level)
 
   return cur;
 }
-
+/* Necessary function for generating a random number on the GPU. This is  
+ * utilized when creating a new node and assigning an appropriate level value.
+ */
 __device__ static int rand(unsigned int random)
 {
  	//See Figure 2 of 'GPU Random Numbers via the Tiny Encryption Algorithm', Zafar (2010).

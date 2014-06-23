@@ -18,6 +18,7 @@ static Node *node_search(Skiplist *sl, E elem, int desired_level);
 static Node *node_create(E val, int level);
 static void node_destroy(Node *node);
 
+/* Initializes the skiplist to contain nothing but an empty head node */
 Skiplist *skiplist_create(void)
 {
   int i;
@@ -30,6 +31,7 @@ Skiplist *skiplist_create(void)
   return sl;
 }
 
+/* Frees up the memory used for individual nodes in the skiplist */
 void skiplist_destroy(Skiplist *sl)
 {
   Node *cur;
@@ -50,6 +52,7 @@ void skiplist_destroy(Skiplist *sl)
   free(sl);
 }
 
+/* Creates a node which is inserted in order to the skiplist */
 void skiplist_insert(Skiplist *sl, E elem)
 {
   Node *new_node;
@@ -74,15 +77,19 @@ void skiplist_insert(Skiplist *sl, E elem)
   }
 }
 
+/* Removes a certain element from the skiplist and appropriately reassigns
+ * pointers once the element is taken out of the list.
+ */
 void skiplist_remove(Skiplist *sl, E elem)
 {
-  Node *prev_node = node_search(sl, elem, 0);
-  Node *target_node = prev_node->next[0];
+  Node *prev_node = node_search(sl, elem, 0); // node previous to 'elem'
+  Node *target_node = prev_node->next[0]; // node containing 'elem' if in list
   int i;
 
   if (target_node->val != elem)
     return; // elem not found
 
+	// Bypass the removed node by adjusting pointers from the top down.
   // remove top level first
   for (i = target_node->level - 1; i >= 0; i--) {
     prev_node = node_search(sl, elem, i);
@@ -92,6 +99,7 @@ void skiplist_remove(Skiplist *sl, E elem)
   node_destroy(target_node);
 }
 
+/* Simply traverses the bottom level of the skiplist and returns size */
 int skiplist_size(Skiplist *sl)
 {
   Node *cur = skiplist_head(sl);
@@ -110,6 +118,7 @@ int skiplist_size(Skiplist *sl)
   return size;
 }
 
+/* Returns an array of type E containing only sorted values from the list */
 E *skiplist_gather(Skiplist *sl, int *dim)
 {
   int size = skiplist_size(sl);
@@ -132,6 +141,7 @@ E *skiplist_gather(Skiplist *sl, int *dim)
   return dest;
 }
 
+/* Returns the pointer to the head of the skip list. */
 Node *skiplist_head(Skiplist *sl)
 {
   return sl->head;
@@ -142,6 +152,7 @@ E node_val(Node *node)
   return node->val;
 }
 
+/* Fetches the reference to the next Node in the skiplist. */
 Node *node_next(Node *node)
 {
   if (node == NULL)
@@ -150,6 +161,7 @@ Node *node_next(Node *node)
     return node->next[0];
 }
 
+/* Constructor function for a single node belonging to the skiplist. */
 static Node *node_create(E val, int level)
 {
   Node *node = malloc(sizeof(Node));
@@ -161,12 +173,14 @@ static Node *node_create(E val, int level)
   return node;
 }
 
+/* Simplifies the process of freeing node data. */
 static void node_destroy(Node *node)
 {
   free(node->next);
   free(node);
 }
 
+/* Traverses the skiplist and searches for a particular element. */
 static Node *node_search(Skiplist *sl, E elem, int desired_level)
 {
   Node *cur = skiplist_head(sl);

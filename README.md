@@ -40,12 +40,12 @@ elements in the array `a` into the skiplist `sl`:
 ...
 __global__ void add(Skiplist *sl, int *a, int N)
 {
-    int x = threadIdx.x + blockIdx.x * blockDim.x;
+  int x = threadIdx.x + blockIdx.x * blockDim.x;
 
-    while (x < N) {
-        skiplist_insert(sl, a[x]);
-        x += blockDim.x * gridDim.x;
-    }
+  while (x < N) {
+    skiplist_insert(sl, a[x]);
+    x += blockDim.x * gridDim.x;
+  }
 }
 ...
 add<<<100, 320>>>(sl, a_dev, N);

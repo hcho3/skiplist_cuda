@@ -89,7 +89,7 @@ void skiplist_remove(Skiplist *sl, E elem)
   if (target_node->val != elem)
     return; // elem not found
 
-	// Bypass the removed node by adjusting pointers from the top down.
+  // Bypass the removed node by adjusting pointers from the top down.
   // remove top level first
   for (i = target_node->level - 1; i >= 0; i--) {
     prev_node = node_search(sl, elem, i);

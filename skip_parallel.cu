@@ -57,10 +57,10 @@ __global__ static void skiplist_destroy_traverse(Skiplist *sl, Node **to_free)
 /* Uses the array of elements created above to actually free up Node memory. */
 __global__ static void skiplist_destroy_free(Node **to_free, int size)
 {
-	// Parallelizing the process of freeing Nodes from memory.
+  // Parallelizing the process of freeing Nodes from memory.
   int i = threadIdx.x + blockIdx.x * blockDim.x;
 
-	// Frees Nodes like in skip_serial but uses threads to do this concurrently
+  // Frees Nodes like in skip_serial but uses threads to do this concurrently
   while (i < size) {
     free(to_free[i]->next);
     free(to_free[i]);
@@ -120,21 +120,21 @@ __device__ void skiplist_insert(Skiplist *sl, E elem)
   //int tries;
   for (i = 0; i < level; i++) {
     do {
-			// We keep track of the original form of the list for checking purposes
+      // We keep track of the original form of the list for checking purposes
       dest = node_search(sl, elem, i); // want to insert right after this node
       link_first_read = dest->next[i];
 
-			// Checks for obvious errors before inserting
+      // Checks for obvious errors before inserting
       if (link_first_read != NULL && link_first_read->val < elem) {
         continue;
       }
 
-			// Allow each node/thread to set the forward facing pointer.
+      // Allow each node/thread to set the forward facing pointer.
       new_node->next[i] = link_first_read;
       // check if dest->next[i] contains the same value as a while ago
       // if so, make it point to the new node. 
       // otherwise, declare failure and try again.
-			// this would mean that someone else has already inserted.
+      // this would mean that someone else has already inserted.
       link_second_read
       = (Node *)atomicCAS((unsigned long long int *)&(dest->next[i]),
         *(unsigned long long int *)&link_first_read,
@@ -273,8 +273,8 @@ __device__ static Node *node_search(Skiplist *sl, E elem, int desired_level)
  */
 __device__ static int rand(unsigned int random)
 {
- 	//See Figure 2 of 'GPU Random Numbers via the Tiny Encryption Algorithm', Zafar (2010).
-	unsigned int sum, v0, v1;
+  //See Figure 2 of 'GPU Random Numbers via the Tiny Encryption Algorithm', Zafar (2010).
+  unsigned int sum, v0, v1;
   int tid = threadIdx.x + blockIdx.x * blockDim.x;
 
   //Start hashing.

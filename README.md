@@ -1,7 +1,7 @@
 **`skiplist_cuda`: A parallel/CUDA implementation of skiplist**
 
-[Skiplists](http://dl.acm.org/citation.cfm?id=78977) are a variant of linked
-lists that allow insertions in O(log n) time. Inspired by a
+[Skiplists](http://igoro.com/archive/skip-lists-are-fascinating/) are a variant
+of linked lists that allow insertions in O(log n) time. Inspired by a
 [GTC 2013 talk]
 (http://on-demand.gputechconf.com/gtc/2013/presentations/S3101-Atomic-Memory-Operations.pdf),
 we build a parallel implementation of skiplist where multiple GPU threads can
@@ -12,8 +12,13 @@ type definition `E` in `skip_parallel.h`.
 
 We assume that you are using a 64-bit machine.
 
+See [here](http://dl.acm.org/citation.cfm?id=78977) for a
+theoretical analysis of skiplists.
+
 Usage
 ----
+For more complete usage, see `tester_parallel.cu`.
+
 **Create a skiplist on the host:**
 ```cuda
 #include "spmat_parallel.h"
@@ -77,10 +82,6 @@ nvcc -o [your executable] [your object files] skip_parallel.o safety.o
 ```
 `safety.o` contains a little macro that checks the return value of all
 CUDA API functions.
-
-Dependencies
-----
-  - [nVIDIA CUDA toolkit](http://docs.nvidia.com/cuda)
 
 Credits
 ----

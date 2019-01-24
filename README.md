@@ -2,11 +2,9 @@
 
 [Skiplists](http://igoro.com/archive/skip-lists-are-fascinating/) are a variant
 of linked lists that allow insertions in O(log n) time. Inspired by a
-[GTC 2013 talk]
-(http://on-demand.gputechconf.com/gtc/2013/presentations/S3101-Atomic-Memory-Operations.pdf),
+[GTC 2013 talk](http://on-demand.gputechconf.com/gtc/2013/presentations/S3101-Atomic-Memory-Operations.pdf),
 we build a parallel implementation of skiplist where multiple GPU threads can
-insert simultaneously. We make heavy use of [atomic compare-and-swap]
-(http://docs.nvidia.com/cuda/cuda-c-programming-guide/#atomiccas) operation.
+insert simultaneously. We make heavy use of [atomic compare-and-swap](http://docs.nvidia.com/cuda/cuda-c-programming-guide/#atomiccas) operation.
 By default, our skiplist contains integers; to use different types, modify the
 type definition `E` in `skip_parallel.h`.
 
